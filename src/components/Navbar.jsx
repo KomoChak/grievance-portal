@@ -1,29 +1,46 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
+import { AppBar, Toolbar, Typography, Box } from '@mui/material';
+
+const INDIGO = '#1A237E';
+const WHITE = '#fff';
 
 export default function Navbar() {
-  const navigate = useNavigate();
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate('/');
-  };
-
   return (
-    <AppBar position="static" sx={{ bgcolor: '#1565c0' }}>
-      <Toolbar>
-        <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-          <img src="/coal-india-logo.png" alt="Coal India" style={{ height: 40, marginRight: 16 }} />
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+    <AppBar
+      position="sticky"
+      elevation={2}
+      sx={{
+        bgcolor: INDIGO,
+        color: WHITE,
+        borderBottom: '1px solid #e0e0e0',
+        zIndex: 1300,
+      }}
+    >
+      <Toolbar
+        sx={{
+          minHeight: 70,
+          px: { xs: 2, md: 4 },
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 700,
+              letterSpacing: 1,
+              color: WHITE,
+              fontSize: { xs: 18, md: 22 },
+              textAlign: 'center',
+              width: '100%',
+            }}
+          >
             Coal India Grievance Portal
           </Typography>
         </Box>
-        <Button color="inherit" component={RouterLink} to="/dashboard">Dashboard</Button>
-        <Button color="inherit" component={RouterLink} to="/submit-grievance">Submit Grievance</Button>
-        <Button color="inherit" component={RouterLink} to="/my-grievances">My Grievances</Button>
-        <Button color="inherit" component={RouterLink} to="/profile">Profile</Button>
-        <Button color="inherit" onClick={handleLogout}>Logout</Button>
-      </Toolbar>
+      </Toolbar>;
     </AppBar>
   );
 }

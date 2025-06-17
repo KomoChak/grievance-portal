@@ -1,51 +1,54 @@
 import React from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
-import { Box } from "@mui/material";
-import Navbar from "./components/Navbar";
+import ResponsiveLayout from "./components/ResponsiveLayout";
 import Sidebar from "./components/Sidebar";
-import LoginPage from "./pages/LoginPage";
-import DashboardPage from "./pages/DashboardPage";
-import GrievanceFormPage from "./pages/GrievanceFormPage";
-import MyGrievancesPage from "./pages/MyGrievancesPage";
-import GrievanceDetailPage from "./pages/GrievanceDetailPage";
-import ProfilePage from "./pages/ProfilePage";
+import Footer from "./components/Footer";
+import { UserAuthProvider } from './context/UserAuthContext'; // Adjust path as needed
 
-function App() {
+// User pages
+import LoginPage from "./pages/user/LoginPage";
+import DashboardPage from "./pages/user/DashboardPage";
+import SubmitGrievancePage from "./pages/user/SubmitGrievancePage";
+import MyGrievancesPage from "./pages/user/MyGrievancesPage";
+import GrievanceDetailPage from "./pages/user/GrievanceDetailPage";
+import ProfilePage from "./pages/user/ProfilePage";
+import NotFound from "./pages/user/NotFound";
+
+// Admin pages
+import AdminLoginPage from "./pages/admin/AdminLoginPage";
+import AdminApp from "./pages/admin/AdminApp";
+
+export default function App() {
   const location = useLocation();
-  const isLogin = location.pathname === "/";
+  const path = location.pathname;
 
-  if (isLogin) {
-    // For login page, render ONLY the login page (no sidebar, no navbar, no flex layout)
-    return <LoginPage />;
-  }
-
-  // For all other pages, render sidebar, navbar, and main content in flex layout
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh", background: "#f5f6fa" }}>
-      <Sidebar />
-      <Box
-        sx={{
-          flexGrow: 1,
-          ml: "250px", // shift right for sidebar width
-          transition: "margin 0.3s",
-          minHeight: "100vh",
-          display: "flex",
-          flexDirection: "column"
-        }}
-      >
-        <Navbar />
-        <Box sx={{ flexGrow: 1, p: { xs: 1, md: 3 } }}>
+    <UserAuthProvider>
+      {/* 1. User login page (no sidebar/layout) */}
+      {path === "/" ? (
+        <LoginPage />
+      ) : /* 2. Admin login page (no sidebar/layout) */
+      path === "/admin/login" ? (
+        <AdminLoginPage />
+      ) : /* 3. Admin portal (all /admin/* except /admin/login) */
+      path.startsWith("/admin") && path !== "/admin/login" ? (
+        <Routes>
+          <Route path="/admin/*" element={<AdminApp />} />
+        </Routes>
+      ) : (
+        /* 4. User portal (with sidebar and layout) */
+        <ResponsiveLayout SidebarComponent={Sidebar} title="Grievance Portal">
           <Routes>
             <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/submit-grievance" element={<GrievanceFormPage />} />
+            <Route path="/submit-grievance" element={<SubmitGrievancePage />} />
             <Route path="/my-grievances" element={<MyGrievancesPage />} />
             <Route path="/grievances/:id" element={<GrievanceDetailPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
-        </Box>
-      </Box>
-    </Box>
+          <Footer />
+        </ResponsiveLayout>
+      )}
+    </UserAuthProvider>
   );
 }
-
-export default App;

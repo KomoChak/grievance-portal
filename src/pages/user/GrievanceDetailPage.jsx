@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import axios from "axios";
 import {
   Box,
   Typography,
@@ -16,73 +18,79 @@ import {
   DialogContent,
   DialogActions,
   Rating,
-  Alert
+  Alert,
+  CircularProgress,
 } from "@mui/material";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import FeedbackIcon from "@mui/icons-material/Feedback";
 
-const mockGrievance = {
-  id: "GRV-2025-00123",
-  subsidiary: "Central Coalfields Limited",
-  category: "Salary/Payment",
-  subject: "Salary not credited for April 2025",
-  details:
-    "My salary for April 2025 has not been credited yet. Please look into this issue urgently.",
-  date: "2025-05-02",
-  status: "Resolved", // "Pending", "In Progress", "Resolved", "Rejected"
-  submittedAt: "2025-05-02T10:15:00Z",
-  updatedAt: "2025-05-10T15:30:00Z",
-  adminResponse:
-    "Your salary issue has been resolved and the amount has been credited on 10th May 2025. Please check your bank account.",
-  attachments: [
-    {
-      name: "salary-slip-april-2025.pdf",
-      url: "/attachments/salary-slip-april-2025.pdf"
-    }
-  ],
-  feedback: null // or { rating: 4, comments: "Issue resolved quickly." }
-};
-
-const statusSteps = [
-  "Submitted",
-  "In Progress",
-  "Resolved"
-];
-
+const statusSteps = ["Submitted", "In Progress", "Resolved"];
 const statusIcons = {
-  Pending: <HourglassEmptyIcon color="warning" />,
-  "In Progress": <AssignmentTurnedInIcon color="info" />,
-  Resolved: <CheckCircleIcon color="success" />,
-  Rejected: <HourglassEmptyIcon color="error" />
+  pending: <HourglassEmptyIcon color="warning" />,
+  "in progress": <AssignmentTurnedInIcon color="info" />,
+  resolved: <CheckCircleIcon color="success" />,
+  rejected: <HourglassEmptyIcon color="error" />,
 };
 
 export default function GrievanceDetailPage() {
-  // In real app, fetch grievance by ID from backend using useParams()
-  const [grievance, setGrievance] = useState(mockGrievance);
+  const { id } = useParams();
+  const [grievance, setGrievance] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedback, setFeedback] = useState({ rating: 0, comments: "" });
   const [feedbackSuccess, setFeedbackSuccess] = useState(false);
 
+  useEffect(() => {
+    const fetchGrievance = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await axios.get(
+          `http://localhost:5000/api/grievances/${id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setGrievance(res.data.grievance);
+      } catch (err) {
+        setError("Could not load grievance. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchGrievance();
+  }, [id]);
+
   const handleFeedbackOpen = () => setFeedbackOpen(true);
   const handleFeedbackClose = () => setFeedbackOpen(false);
 
-  const handleFeedbackSubmit = () => {
-    setGrievance({
-      ...grievance,
-      feedback: { ...feedback }
-    });
-    setFeedbackSuccess(true);
-    setFeedbackOpen(false);
-    // TODO: Send feedback to backend
+  const handleFeedbackSubmit = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.post(
+        `http://localhost:5000/api/grievances/${id}/feedback`,
+        feedback,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setGrievance((prev) => ({
+        ...prev,
+        feedback: { ...feedback },
+      }));
+      setFeedbackSuccess(true);
+      setFeedbackOpen(false);
+    } catch (err) {
+      setError("Could not submit feedback. Try again.");
+    }
   };
 
-  // Determine active step for Stepper
+  if (loading) return <CircularProgress sx={{ display: "block", mx: "auto", mt: 6 }} />;
+  if (error) return <Alert severity="error">{error}</Alert>;
+  if (!grievance) return null;
+
   const stepIndex =
-    grievance.status === "Pending"
+    grievance.status === "pending"
       ? 0
-      : grievance.status === "In Progress"
+      : grievance.status === "in progress"
       ? 1
       : 2;
 
@@ -96,25 +104,19 @@ export default function GrievanceDetailPage() {
         <Grid container spacing={2}>
           <Grid item xs={12} md={8}>
             <Typography variant="subtitle2" color="text.secondary">
-              Grievance ID: <b>{grievance.id}</b>
+              Grievance ID: <b>{grievance._id}</b>
             </Typography>
             <Typography variant="h6" sx={{ mt: 2 }}>
-              {grievance.subject}
+              {grievance.title}
             </Typography>
             <Typography variant="body1" sx={{ mt: 1 }}>
-              {grievance.details}
+              {grievance.description}
             </Typography>
             <Typography variant="body2" sx={{ mt: 2 }}>
-              <b>Category:</b> {grievance.category}
+              <b>Category:</b> {grievance.category || "-"}
             </Typography>
             <Typography variant="body2">
-              <b>Subsidiary:</b> {grievance.subsidiary}
-            </Typography>
-            <Typography variant="body2">
-              <b>Date of Incident:</b> {grievance.date}
-            </Typography>
-            <Typography variant="body2">
-              <b>Submitted At:</b> {new Date(grievance.submittedAt).toLocaleString()}
+              <b>Submitted At:</b> {new Date(grievance.createdAt).toLocaleString()}
             </Typography>
             <Typography variant="body2">
               <b>Last Updated:</b> {new Date(grievance.updatedAt).toLocaleString()}
@@ -123,15 +125,15 @@ export default function GrievanceDetailPage() {
               <Chip
                 label={grievance.status}
                 color={
-                  grievance.status === "Resolved"
+                  grievance.status === "resolved"
                     ? "success"
-                    : grievance.status === "In Progress"
+                    : grievance.status === "in progress"
                     ? "info"
-                    : grievance.status === "Rejected"
+                    : grievance.status === "rejected"
                     ? "error"
                     : "warning"
                 }
-                icon={statusIcons[grievance.status]}
+                icon={statusIcons[grievance.status?.toLowerCase()]}
                 sx={{ fontWeight: "bold", fontSize: 16 }}
               />
             </Box>
@@ -174,19 +176,19 @@ export default function GrievanceDetailPage() {
         </Box>
 
         {/* Admin Response */}
-        {grievance.adminResponse && (
+        {grievance.response && (
           <Box sx={{ mt: 4, p: 2, bgcolor: "#f5f5f5", borderRadius: 2 }}>
             <Typography variant="subtitle1" fontWeight="bold" color="primary">
               Official Response:
             </Typography>
             <Typography variant="body1" sx={{ mt: 1 }}>
-              {grievance.adminResponse}
+              {grievance.response}
             </Typography>
           </Box>
         )}
 
         {/* Feedback Section */}
-        {grievance.status === "Resolved" && (
+        {grievance.status === "resolved" && (
           <Box sx={{ mt: 4 }}>
             <Divider sx={{ mb: 2 }} />
             <Typography variant="h6" sx={{ mb: 2 }}>
@@ -238,7 +240,7 @@ export default function GrievanceDetailPage() {
               onChange={(e) =>
                 setFeedback((prev) => ({
                   ...prev,
-                  comments: e.target.value
+                  comments: e.target.value,
                 }))
               }
               fullWidth
